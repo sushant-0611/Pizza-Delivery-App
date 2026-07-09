@@ -1,5 +1,5 @@
 const express = require("express");
-
+const upload = require("../middleware/upload");
 const router = express.Router();
 
 const {
@@ -12,13 +12,12 @@ const {
 
 } = require("../controllers/pizzaController");
 
-router.post("/", addPizza);
-
+router.post("/", upload.single("image"), addPizza);
 router.get("/", getPizzas);
 
 router.get("/:id", getPizzaById);
 
-router.put("/:id", updatePizza);
+router.put("/:id", upload.single("image"), updatePizza);
 
 router.delete("/:id", deletePizza);
 

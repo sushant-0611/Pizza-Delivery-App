@@ -1,0 +1,49 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f5f5f5;
+}
+
+a {
+  text-decoration: none;
+}
+
+ul {
+  list-style: none;
+}
+
+/* Force About Page Black Text */
+
+.about-page {
+  color: #000 !important;
+}
+
+
+.about-page * {
+  color: #000 !important;
+}
+
+
+.about-page .text-warning {
+  color: #ffc107 !important;
+}
+
+
+.about-page .text-danger {
+  color: #dc3545 !important;
+}
+
+
+.about-page svg.text-warning {
+  color: #ffc107 !important;
+}
+
+
+.about-page svg.text-danger {
+  color: #dc3545 !important;
+}

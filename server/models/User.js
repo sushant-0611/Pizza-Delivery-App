@@ -2,6 +2,9 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
+    // =========================
+    // Basic Information
+    // =========================
     name: {
       type: String,
       required: true,
@@ -13,6 +16,7 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
       lowercase: true,
+      trim: true,
     },
 
     password: {
@@ -31,6 +35,67 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
+    city: {
+      type: String,
+      default: "",
+    },
+
+    pincode: {
+      type: String,
+      default: "",
+    },
+
+    // =========================
+    // Payment Details
+    // =========================
+    paymentDetails: {
+      method: {
+        type: String,
+        enum: ["UPI", "COD", "CARD"],
+        default: "COD",
+      },
+
+      status: {
+        type: String,
+        enum: ["Pending", "Paid", "Failed"],
+        default: "Pending",
+      },
+    },
+
+    // =========================
+    // Email Verification
+    // =========================
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    verificationToken: {
+      type: String,
+      default: null,
+    },
+
+    verificationTokenExpires: {
+      type: Date,
+      default: null,
+    },
+
+    // =========================
+    // Forgot Password
+    // =========================
+    resetPasswordToken: {
+      type: String,
+      default: null,
+    },
+
+    resetPasswordExpires: {
+      type: Date,
+      default: null,
+    },
+
+    // =========================
+    // User Role
+    // =========================
     role: {
       type: String,
       enum: ["user", "admin"],

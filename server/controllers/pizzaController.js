@@ -1,9 +1,63 @@
 const Pizza = require("../models/Pizza");
-
+const cloudinary = require("../config/cloudinary");
+const fs = require("fs-extra");
 // Add Pizza
 exports.addPizza = async (req, res) => {
+    console.log(req.file);
+  console.log(req.body);
   try {
-    const pizza = await Pizza.create(req.body);
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Pizza image is required",
+      });
+    }
+
+    // Upload image to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "PizzaDeliveryApp/Pizzas",
+    });
+
+    // Delete local uploaded file
+    await fs.remove(req.file.path);
+
+    // Create pizza
+    const {
+  name,
+  description,
+  category,
+  isVeg,
+  available,
+  smallPrice,
+  mediumPrice,
+  largePrice,
+} = req.body;
+
+const pizza = await Pizza.create({
+  name,
+  description,
+  category,
+  isVeg,
+  available,
+  image: {
+    url: result.secure_url,
+    public_id: result.public_id,
+  },
+  sizes: [
+    {
+      size: "Small",
+      price: Number(smallPrice),
+    },
+    {
+      size: "Medium",
+      price: Number(mediumPrice),
+    },
+    {
+      size: "Large",
+      price: Number(largePrice),
+    },
+  ],
+});
 
     res.status(201).json({
       success: true,
@@ -11,7 +65,7 @@ exports.addPizza = async (req, res) => {
       pizza,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
 
     res.status(500).json({
       success: false,
@@ -64,34 +118,91 @@ exports.getPizzaById = async (req, res) => {
 
     }
 };
+
 // Update Pizza
 exports.updatePizza = async (req, res) => {
+  try {
+    const pizza = await Pizza.findById(req.params.id);
 
-    try {
-
-        const pizza = await Pizza.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            {
-                new: true
-            }
-        );
-
-        res.status(200).json({
-            success: true,
-            message: "Pizza Updated",
-            pizza
-        });
-
-    } catch (error) {
-
-        res.status(500).json({
-            success: false,
-            message: "Server Error"
-        });
-
+    if (!pizza) {
+      return res.status(404).json({
+        success: false,
+        message: "Pizza not found",
+      });
     }
 
+    let image = pizza.image;
+
+    // New image uploaded
+    if (req.file) {
+      // Delete old image
+      await cloudinary.uploader.destroy(pizza.image.public_id);
+
+      // Upload new image
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "PizzaDeliveryApp/Pizzas",
+      });
+
+      await fs.remove(req.file.path);
+
+      image = {
+        url: result.secure_url,
+        public_id: result.public_id,
+      };
+    }
+
+    const {
+      name,
+      description,
+      category,
+      isVeg,
+      available,
+      smallPrice,
+      mediumPrice,
+      largePrice,
+    } = req.body;
+
+    pizza.name = name;
+    pizza.description = description;
+    pizza.category = category;
+    pizza.isVeg = isVeg;
+    pizza.available = available;
+
+    pizza.image = image;
+
+    pizza.sizes = [
+      {
+        size: "Small",
+        price: Number(smallPrice),
+      },
+      {
+        size: "Medium",
+        price: Number(mediumPrice),
+      },
+      {
+        size: "Large",
+        price: Number(largePrice),
+      },
+    ];
+
+    await pizza.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Pizza Updated Successfully",
+      pizza,
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+
+  }
 };
 // Delete Pizza
 exports.deletePizza = async (req, res) => {

@@ -1,0 +1,10 @@
+/* Global App Styles */
+
+#root {
+  min-height: 100vh;
+}
+
+
+.page-container {
+  min-height: calc(100vh - 80px);
+}
