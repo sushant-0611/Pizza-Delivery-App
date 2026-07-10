@@ -1,717 +1,524 @@
 const Order = require("../models/Order");
 const Cart = require("../models/Cart");
+const Inventory = require("../models/Inventory");
+
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 
 
-// ===============================
+// =======================================
 // Razorpay Instance
-// ===============================
+// =======================================
 
 const razorpay = new Razorpay({
-
-    key_id: process.env.RAZORPAY_KEY_ID,
-
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
 
+// =======================================
+// AUTO DEDUCT INVENTORY
+// =======================================
 
+const deductInventory = async (items) => {
+  try {
+    for (const item of items) {
 
-// ===============================
-// CREATE RAZORPAY ORDER
-// ===============================
+      // Only Custom Pizza
+      if (!item.custom || !item.builder) continue;
 
-exports.createPaymentOrder = async (req,res)=>{
+      // ================= Base =================
 
-try{
+      if (item.builder.base) {
+        await Inventory.findOneAndUpdate(
+          {
+            type: "Base",
+            name: item.builder.base,
+          },
+          {
+            $inc: {
+              stock: -item.quantity,
+            },
+          }
+        );
+      }
 
+      // ================= Sauce =================
 
-const {
-    totalPrice
-}=req.body;
+      if (item.builder.sauce) {
+        await Inventory.findOneAndUpdate(
+          {
+            type: "Sauce",
+            name: item.builder.sauce,
+          },
+          {
+            $inc: {
+              stock: -item.quantity,
+            },
+          }
+        );
+      }
 
+      // ================= Cheese =================
 
-if(!totalPrice){
+      if (item.builder.cheese) {
 
-return res.status(400).json({
+        let cheeseList = [];
 
-success:false,
+        if (Array.isArray(item.builder.cheese)) {
+          cheeseList = item.builder.cheese;
+        } else {
+          cheeseList = item.builder.cheese
+            .split(",")
+            .map((c) => c.trim());
+        }
 
-message:"Total price required"
+        for (const cheese of cheeseList) {
+          await Inventory.findOneAndUpdate(
+            {
+              type: "Cheese",
+              name: cheese,
+            },
+            {
+              $inc: {
+                stock: -item.quantity,
+              },
+            }
+          );
+        }
+      }
 
-});
+      // ================= Vegetables =================
 
-}
+      if (
+        item.builder.vegetables &&
+        item.builder.vegetables.length > 0
+      ) {
 
+        for (const veg of item.builder.vegetables) {
 
+          await Inventory.findOneAndUpdate(
+            {
+              type: "Vegetable",
+              name: veg,
+            },
+            {
+              $inc: {
+                stock: -item.quantity,
+              },
+            }
+          );
 
-const options={
+        }
 
-amount: Math.round(totalPrice * 100),
+      }
 
-currency:"INR",
+    }
 
-receipt:`pizza_${Date.now()}`
+    console.log("✅ Inventory Updated Successfully");
 
+  } catch (error) {
+
+    console.log("Inventory Deduct Error :", error);
+
+  }
 };
 
 
+// =======================================
+// CREATE RAZORPAY PAYMENT ORDER
+// =======================================
 
-const razorpayOrder =
-await razorpay.orders.create(options);
+exports.createPaymentOrder = async (req, res) => {
+  try {
 
+    const { totalPrice } = req.body;
 
+    if (!totalPrice) {
+      return res.status(400).json({
+        success: false,
+        message: "Total Price Required",
+      });
+    }
 
-res.status(200).json({
+    const options = {
+      amount: Math.round(totalPrice * 100),
+      currency: "INR",
+      receipt: `pizza_${Date.now()}`,
+    };
 
-success:true,
+    const razorpayOrder =
+      await razorpay.orders.create(options);
 
-razorpayOrder
+    res.status(200).json({
+      success: true,
+      razorpayOrder,
+    });
 
-});
+  } catch (error) {
 
+    console.log(error);
 
-}
-catch(error){
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
 
-console.log(error);
-
-res.status(500).json({
-
-success:false,
-
-message:error.message
-
-});
-
-}
-
+  }
 };
-
-
-
-
-
-
-// ===============================
+// =======================================
 // VERIFY RAZORPAY PAYMENT
-// ===============================
-
-exports.verifyPayment = async(req,res)=>{
-
-
-try{
-
-
-const {
-
-razorpay_order_id,
-
-razorpay_payment_id,
-
-razorpay_signature,
-
-shippingAddress,
-
-items,
-
-totalPrice
-
-
-}=req.body;
-
-
-
-
-const body =
-razorpay_order_id +
-"|" +
-razorpay_payment_id;
-
-
-
-const generatedSignature =
-crypto
-.createHmac(
-"sha256",
-process.env.RAZORPAY_KEY_SECRET
-)
-.update(body)
-.digest("hex");
-
-
-
-
-if(generatedSignature !== razorpay_signature){
-
-
-return res.status(400).json({
-
-success:false,
-
-message:"Payment verification failed"
-
-});
-
-
-}
-
-
-
-
-
-const order = await Order.create({
-
-
-user:req.user.id,
-
-
-items,
-
-
-shippingAddress,
-
-
-
-payment:{
-
-
-method:"Razorpay",
-
-
-status:"Paid",
-
-
-razorpayOrderId:
-razorpay_order_id,
-
-
-razorpayPaymentId:
-razorpay_payment_id,
-
-
-razorpaySignature:
-razorpay_signature
-
-
-},
-
-
-
-totalPrice,
-
-
-orderStatus:"Order Received"
-
-
-});
-
-
-
-
-
-// clear cart
-
-await Cart.findOneAndUpdate(
-
-{
-user:req.user.id
-},
-
-{
-items:[]
-}
-
-);
-
-
-
-
-
-res.status(201).json({
-
-success:true,
-
-message:"Payment successful",
-
-order
-
-});
-
-
-}
-catch(error){
-
-console.log(error);
-
-res.status(500).json({
-
-success:false,
-
-message:error.message
-
-});
-
-}
-
+// =======================================
+
+exports.verifyPayment = async (req, res) => {
+  try {
+
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      shippingAddress,
+      items,
+      totalPrice,
+    } = req.body;
+
+    // Verify Signature
+    const body =
+      razorpay_order_id + "|" + razorpay_payment_id;
+
+    const generatedSignature = crypto
+      .createHmac(
+        "sha256",
+        process.env.RAZORPAY_KEY_SECRET
+      )
+      .update(body)
+      .digest("hex");
+
+    if (generatedSignature !== razorpay_signature) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment Verification Failed",
+      });
+    }
+
+    // Create Order
+    const order = await Order.create({
+
+      user: req.user.id,
+
+      items,
+
+      shippingAddress,
+
+      payment: {
+        method: "Razorpay",
+        status: "Paid",
+        razorpayOrderId: razorpay_order_id,
+        razorpayPaymentId: razorpay_payment_id,
+        razorpaySignature: razorpay_signature,
+      },
+
+      totalPrice,
+
+      orderStatus: "Order Received",
+
+    });
+
+    // ===================================
+    // AUTO DEDUCT INVENTORY
+    // ===================================
+
+    await deductInventory(items);
+
+    // ===================================
+    // CLEAR CART
+    // ===================================
+
+    await Cart.findOneAndUpdate(
+      {
+        user: req.user.id,
+      },
+      {
+        items: [],
+      }
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Payment Successful",
+      order,
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+
+  }
 };
 
 
 
+// =======================================
+// PLACE COD ORDER
+// =======================================
 
+exports.placeOrder = async (req, res) => {
+  try {
 
+    const {
+      items,
+      shippingAddress,
+      totalPrice,
+    } = req.body;
 
+    const order = await Order.create({
 
+      user: req.user.id,
 
-// ===============================
-// COD ORDER
-// ===============================
+      items,
 
+      shippingAddress,
 
-exports.placeOrder = async(req,res)=>{
+      payment: {
+        method: "COD",
+        status: "Pending",
+      },
 
+      totalPrice,
 
-try{
+      orderStatus: "Order Received",
 
+    });
 
-const {
+    // ===================================
+    // AUTO DEDUCT INVENTORY
+    // ===================================
 
+    await deductInventory(items);
 
-items,
+    // ===================================
+    // CLEAR CART
+    // ===================================
 
-shippingAddress,
+    await Cart.findOneAndUpdate(
+      {
+        user: req.user.id,
+      },
+      {
+        items: [],
+      }
+    );
 
-totalPrice
+    res.status(201).json({
+      success: true,
+      message: "COD Order Placed Successfully",
+      order,
+    });
 
+  } catch (error) {
 
-}=req.body;
+    console.log(error);
 
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
 
+  }
+};
+// =======================================
+// GET MY ORDERS
+// =======================================
 
+exports.getMyOrders = async (req, res) => {
+  try {
 
-const order = await Order.create({
+    const orders = await Order.find({
+      user: req.user.id,
+    })
+      .populate("items.pizza")
+      .sort({
+        createdAt: -1,
+      });
 
+    res.status(200).json({
+      success: true,
+      orders,
+    });
 
-user:req.user.id,
+  } catch (error) {
 
+    console.log("Get My Orders Error:", error);
 
-items,
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
 
-
-shippingAddress,
-
-
-
-payment:{
-
-
-method:"COD",
-
-
-status:"Pending"
-
-
-},
-
-
-
-totalPrice,
-
-
-orderStatus:"Order Received"
-
-
-});
-
-
-
-
-
-
-await Cart.findOneAndUpdate(
-
-{
-user:req.user.id
-},
-
-{
-items:[]
-}
-
-);
-
-
-
-
-
-res.status(201).json({
-
-success:true,
-
-message:"COD Order Placed Successfully",
-
-order
-
-});
-
-
-}
-catch(error){
-
-console.log(error);
-
-
-res.status(500).json({
-
-success:false,
-
-message:error.message
-
-});
-
-
-}
-
-
+  }
 };
 
 
+// =======================================
+// GET ALL ORDERS (ADMIN)
+// =======================================
 
+exports.getAllOrders = async (req, res) => {
+  try {
 
+    const orders = await Order.find()
+      .populate("user", "name email")
+      .populate("items.pizza")
+      .sort({
+        createdAt: -1,
+      });
 
+    res.status(200).json({
+      success: true,
+      orders,
+    });
 
+  } catch (error) {
 
+    console.log("Get All Orders Error:", error);
 
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
 
-// ===============================
-// USER ORDERS
-// ===============================
-
-exports.getMyOrders = async(req,res)=>{
-
-
-try{
-
-
-const orders =
-await Order.find({
-
-user:req.user.id
-
-})
-
-.populate("items.pizza")
-
-.sort({
-
-createdAt:-1
-
-});
-
-
-
-
-res.json({
-
-success:true,
-
-orders
-
-});
-
-
-}
-catch(error){
-
-
-res.status(500).json({
-
-success:false,
-
-message:error.message
-
-});
-
-
-}
-
-
+  }
 };
 
 
+// =======================================
+// GET SINGLE ORDER
+// =======================================
 
+exports.getOrderById = async (req, res) => {
+  try {
 
+    const order = await Order.findById(req.params.id)
+      .populate("user", "name email")
+      .populate("items.pizza");
 
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
+    res.status(200).json({
+      success: true,
+      order,
+    });
 
+  } catch (error) {
 
+    console.log("Get Order Error:", error);
 
-// ===============================
-// ADMIN ALL ORDERS
-// ===============================
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
 
-exports.getAllOrders = async(req,res)=>{
-
-
-try{
-
-
-const orders =
-await Order.find()
-
-.populate(
-"user",
-"name email"
-)
-
-.populate(
-"items.pizza"
-)
-
-.sort({
-
-createdAt:-1
-
-});
-
-
-
-res.json({
-
-success:true,
-
-orders
-
-});
-
-
-}
-catch(error){
-
-
-res.status(500).json({
-
-success:false,
-
-message:error.message
-
-});
-
-
-}
-
-
+  }
 };
 
 
+// =======================================
+// UPDATE ORDER STATUS (ADMIN)
+// =======================================
 
+exports.updateOrderStatus = async (req, res) => {
+  try {
 
+    const { orderStatus } = req.body;
 
+    const validStatus = [
+      "Order Received",
+      "In Kitchen",
+      "Sent to Delivery",
+      "Delivered",
+      "Cancelled",
+    ];
 
+    if (!validStatus.includes(orderStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Order Status",
+      });
+    }
 
+    const order = await Order.findById(req.params.id);
 
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
-// ===============================
-// SINGLE ORDER
-// ===============================
+    order.orderStatus = orderStatus;
 
-exports.getOrderById = async(req,res)=>{
+    await order.save();
 
+    res.status(200).json({
+      success: true,
+      message: "Order Status Updated Successfully",
+      order,
+    });
 
-try{
+  } catch (error) {
 
+    console.log("Update Status Error:", error);
 
-const order =
-await Order.findById(req.params.id)
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
 
-.populate("user")
-
-.populate("items.pizza");
-
-
-
-if(!order){
-
-return res.status(404).json({
-
-success:false,
-
-message:"Order not found"
-
-});
-
-}
-
-
-
-res.json({
-
-success:true,
-
-order
-
-});
-
-
-}
-catch(error){
-
-
-res.status(500).json({
-
-success:false,
-
-message:error.message
-
-});
-
-
-}
-
-
+  }
 };
 
 
-
-
-
-
-
-
-
-// ===============================
-// UPDATE STATUS
-// ===============================
-
-exports.updateOrderStatus = async(req,res)=>{
-
-
-try{
-
-
-const order =
-await Order.findById(req.params.id);
-
-
-
-if(!order){
-
-return res.status(404).json({
-
-success:false,
-
-message:"Order not found"
-
-});
-
-}
-
-
-
-order.orderStatus =
-req.body.orderStatus;
-
-
-
-await order.save();
-
-
-
-res.json({
-
-success:true,
-
-message:"Order Status Updated",
-
-order
-
-});
-
-
-}
-catch(error){
-
-
-res.status(500).json({
-
-success:false,
-
-message:error.message
-
-});
-
-
-}
-
-
-};
-
-
-
-
-
-
-
-
-
-// ===============================
+// =======================================
 // DELETE ORDER
-// ===============================
+// =======================================
 
-exports.deleteOrder = async(req,res)=>{
+exports.deleteOrder = async (req, res) => {
+  try {
 
+    const order = await Order.findById(req.params.id);
 
-try{
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
+    await order.deleteOne();
 
-const order =
-await Order.findById(req.params.id);
+    res.status(200).json({
+      success: true,
+      message: "Order Deleted Successfully",
+    });
 
+  } catch (error) {
 
+    console.log("Delete Order Error:", error);
 
-if(!order){
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
 
-return res.status(404).json({
-
-success:false,
-
-message:"Order not found"
-
-});
-
-}
-
-
-
-await order.deleteOne();
-
-
-
-res.json({
-
-success:true,
-
-message:"Order Deleted"
-
-});
-
-
-}
-catch(error){
-
-
-res.status(500).json({
-
-success:false,
-
-message:error.message
-
-});
-
-
-}
-
-
+  }
 };
