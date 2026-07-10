@@ -2,21 +2,33 @@ const express = require("express");
 
 const router = express.Router();
 
+
 const protect = require("../middleware/authMiddleware");
 
-// जर admin middleware असेल तर uncomment कर
-// const { adminOnly } = require("../middleware/authMiddleware");
+const {
+  adminOnly
+} = require("../middleware/authMiddleware");
+
 
 
 const {
+
   placeOrder,
+
   createPaymentOrder,
+
   verifyPayment,
+
   getMyOrders,
+
   getAllOrders,
+
   getOrderById,
+
   updateOrderStatus,
+
   deleteOrder,
+
 } = require("../controllers/orderController");
 
 
@@ -24,13 +36,11 @@ const {
 
 
 // ==================================
-// USER ORDER ROUTES
+// USER ROUTES
 // ==================================
 
 
-// ================================
-// COD PLACE ORDER
-// ================================
+// COD ORDER
 
 router.post(
   "/place",
@@ -42,9 +52,7 @@ router.post(
 
 
 
-// ================================
-// CREATE RAZORPAY PAYMENT ORDER
-// ================================
+// CREATE RAZORPAY ORDER
 
 router.post(
   "/create-payment",
@@ -56,9 +64,7 @@ router.post(
 
 
 
-// ================================
-// VERIFY RAZORPAY PAYMENT
-// ================================
+// VERIFY PAYMENT
 
 router.post(
   "/verify-payment",
@@ -70,9 +76,7 @@ router.post(
 
 
 
-// ================================
-// GET USER ORDERS
-// ================================
+// USER ORDERS
 
 router.get(
   "/my-orders",
@@ -86,20 +90,19 @@ router.get(
 
 
 
+
+
 // ==================================
-// ADMIN ORDER ROUTES
+// ADMIN ROUTES
 // ==================================
 
 
-
-// ================================
 // GET ALL ORDERS
-// ================================
 
 router.get(
   "/",
   protect,
-  // adminOnly,
+  adminOnly,
   getAllOrders
 );
 
@@ -108,30 +111,13 @@ router.get(
 
 
 
-// ================================
-// GET SINGLE ORDER
-// ================================
 
-router.get(
-  "/:id",
-  protect,
-  // adminOnly,
-  getOrderById
-);
-
-
-
-
-
-
-// ================================
 // UPDATE ORDER STATUS
-// ================================
 
 router.put(
   "/:id",
   protect,
-  // adminOnly,
+  adminOnly,
   updateOrderStatus
 );
 
@@ -140,16 +126,33 @@ router.put(
 
 
 
-// ================================
+
 // DELETE ORDER
-// ================================
 
 router.delete(
   "/:id",
   protect,
-  // adminOnly,
+  adminOnly,
   deleteOrder
 );
+
+
+
+
+
+
+
+// GET SINGLE ORDER
+// Always keep this LAST
+
+router.get(
+  "/:id",
+  protect,
+  adminOnly,
+  getOrderById
+);
+
+
 
 
 

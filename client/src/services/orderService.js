@@ -40,7 +40,6 @@ export const verifyPayment = async (data) => {
 
 
 
-
 // =============================
 // PLACE COD ORDER
 // =============================
@@ -55,8 +54,6 @@ export const placeOrder = async (data) => {
   return response.data;
 
 };
-
-
 
 
 
@@ -80,9 +77,6 @@ export const getMyOrders = async () => {
 
 
 
-
-
-
 // =============================
 // USER - GET SINGLE ORDER
 // =============================
@@ -101,9 +95,6 @@ export const getOrderById = async (id) => {
 
 
 
-
-
-
 // =============================
 // ADMIN - GET ALL ORDERS
 // =============================
@@ -117,9 +108,6 @@ export const getAllOrders = async () => {
   return response.data;
 
 };
-
-
-
 
 
 
@@ -149,9 +137,6 @@ export const updateOrderStatus = async (
 
 
 
-
-
-
 // =============================
 // ADMIN - DELETE ORDER
 // =============================
@@ -160,6 +145,24 @@ export const deleteOrder = async (id) => {
 
   const response = await api.delete(
     `/orders/${id}`
+  );
+
+  return response.data;
+
+};
+
+
+
+
+
+// =============================
+// ADMIN - GET ORDER STATS (OPTIONAL)
+// =============================
+
+export const getOrderStats = async () => {
+
+  const response = await api.get(
+    "/orders/stats"
   );
 
   return response.data;

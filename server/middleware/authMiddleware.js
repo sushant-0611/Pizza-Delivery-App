@@ -1,90 +1,287 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
+
+
+
 // =====================================
-// Protect Middleware
+// PROTECT MIDDLEWARE
 // =====================================
+
 const protect = async (req, res, next) => {
+
   try {
+
+
     let token;
 
-    // Get Token from Authorization Header
+
+
+    // ==============================
+    // GET TOKEN FROM HEADER
+    // ==============================
+
     if (
       req.headers.authorization &&
       req.headers.authorization.startsWith("Bearer ")
     ) {
-      token = req.headers.authorization.split(" ")[1];
+
+      token =
+        req.headers.authorization.split(" ")[1];
+
     }
 
-    // No Token
+
+
+
+    // ==============================
+    // CHECK TOKEN
+    // ==============================
+
     if (!token) {
+
       return res.status(401).json({
-        success: false,
-        message: "Access denied. No token provided.",
+
+        success:false,
+
+        message:
+        "Access denied. No token provided."
+
       });
+
     }
 
-    // Verify JWT
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Find User
-    const user = await User.findById(decoded.id).select("-password");
 
-    if (!user) {
+
+
+
+    // ==============================
+    // VERIFY TOKEN
+    // ==============================
+
+    const decoded =
+      jwt.verify(
+        token,
+        process.env.JWT_SECRET
+      );
+
+
+
+
+
+
+    // ==============================
+    // FIND USER
+    // ==============================
+
+    const user =
+      await User.findById(decoded.id)
+      .select("-password");
+
+
+
+
+
+
+    if(!user){
+
       return res.status(401).json({
-        success: false,
-        message: "User not found.",
+
+        success:false,
+
+        message:"User not found."
+
       });
+
     }
 
-    // Attach user to request
+
+
+
+
+
+
+    // ==============================
+    // ATTACH USER
+    // ==============================
+
     req.user = user;
 
+
+
     next();
-  } catch (error) {
-    console.error("Auth Middleware Error:", error);
 
-    if (error.name === "TokenExpiredError") {
+
+
+  }
+
+  catch(error){
+
+
+    console.log(
+      "Auth Middleware Error:",
+      error
+    );
+
+
+
+
+
+    if(
+      error.name === "TokenExpiredError"
+    ){
+
       return res.status(401).json({
-        success: false,
-        message: "Token expired. Please login again.",
+
+        success:false,
+
+        message:
+        "Token expired. Please login again."
+
       });
+
     }
 
-    if (error.name === "JsonWebTokenError") {
+
+
+
+
+
+    if(
+      error.name === "JsonWebTokenError"
+    ){
+
       return res.status(401).json({
-        success: false,
-        message: "Invalid token.",
+
+        success:false,
+
+        message:"Invalid token."
+
       });
+
     }
+
+
+
+
+
 
     return res.status(500).json({
-      success: false,
-      message: "Authentication failed.",
+
+      success:false,
+
+      message:
+      "Authentication failed."
+
     });
+
+
+
   }
+
+
 };
 
+
+
+
+
+
+
+
+
 // =====================================
-// Admin Middleware
+// ADMIN ONLY MIDDLEWARE
 // =====================================
-const adminOnly = (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({
-      success: false,
-      message: "Unauthorized.",
-    });
+
+const adminOnly = (
+  req,
+  res,
+  next
+)=>{
+
+
+  try{
+
+
+    if(!req.user){
+
+      return res.status(401).json({
+
+        success:false,
+
+        message:"Unauthorized."
+
+      });
+
+    }
+
+
+
+
+
+
+    if(
+      req.user.role !== "admin"
+    ){
+
+      return res.status(403).json({
+
+        success:false,
+
+        message:
+        "Access denied. Admin only."
+
+      });
+
+    }
+
+
+
+
+
+
+    next();
+
+
+
   }
 
-  if (req.user.role !== "admin") {
-    return res.status(403).json({
-      success: false,
-      message: "Access denied. Admin only.",
+  catch(error){
+
+
+    console.log(
+      "Admin Middleware Error:",
+      error
+    );
+
+
+    return res.status(500).json({
+
+      success:false,
+
+      message:
+      "Admin verification failed."
+
     });
+
+
   }
 
-  next();
+
 };
+
+
+
+
+
+
+
+// =====================================
+// EXPORTS
+// =====================================
 
 module.exports = protect;
+
 module.exports.adminOnly = adminOnly;

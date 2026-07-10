@@ -225,115 +225,36 @@ default:""
 // =============================
 // Payment
 // =============================
+payment: {
 
+  method: {
+    type: String,
+    enum: ["COD", "Razorpay"],
+    default: "COD",
+  },
 
-payment:{
+  status: {
+    type: String,
+    enum: ["Pending", "Paid", "Failed"],
+    default: "Pending",
+  },
 
+  razorpayOrderId: {
+    type: String,
+    default: "",
+  },
 
+  razorpayPaymentId: {
+    type: String,
+    default: "",
+  },
 
-method:{
-
-
-type:String,
-
-
-enum:[
-
-"COD",
-
-"Razorpay"
-
-],
-
-
-default:"COD"
-
-
-},
-
-
-
-
-
-status:{
-
-
-type:String,
-
-
-enum:[
-
-"Pending",
-
-"Paid",
-
-"Failed"
-
-],
-
-
-default:"Pending"
-
+  razorpaySignature: {
+    type: String,
+    default: "",
+  }
 
 },
-
-
-
-
-
-
-razorpayOrderId:{
-
-
-type:String,
-
-
-default:""
-
-
-},
-
-
-
-
-
-razorpayPaymentId:{
-
-
-type:String,
-
-
-default:""
-
-
-},
-
-
-
-
-
-razorpaySignature:{
-
-
-type:String,
-
-
-default:""
-
-
-}
-
-
-
-
-
-},
-
-
-
-
-
-
 
 // =============================
 // COD Charges
@@ -361,42 +282,17 @@ default:0
 // Order Status
 // =============================
 
-
-orderStatus:{
-
-
-type:String,
-
-
-enum:[
-
-
-"Order Received",
-
-
-"In Kitchen",
-
-
-"Sent to Delivery",
-
-
-"Delivered",
-
-
-"Cancelled"
-
-
-],
-
-
-
-default:"Order Received"
-
-
+orderStatus: {
+  type: String,
+  enum: [
+    "Pending",
+    "Preparing",
+    "Out for Delivery",
+    "Delivered",
+    "Cancelled",
+  ],
+  default: "Pending",
 },
-
-
-
 
 
 

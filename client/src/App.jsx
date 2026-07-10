@@ -1,7 +1,7 @@
-
 import { Routes, Route } from "react-router-dom";
 
 import MainLayout from "./layouts/MainLayout";
+
 
 // ================= USER PAGES =================
 
@@ -30,13 +30,17 @@ import UserOrders from "./pages/my-orders";
 import NotFound from "./pages/NotFound";
 
 
+
 // ================= COMPONENTS =================
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminProtected from "./components/AdminProtected";
+
 
 
 // ================= ADMIN =================
 
+import AdminLogin from "./admin/AdminLogin";
 import AdminLayout from "./admin/AdminLayout";
 
 import Dashboard from "./admin/Dashboard";
@@ -48,7 +52,9 @@ import Inventory from "./admin/Inventory";
 
 
 
-function App() {
+
+
+function App(){
 
 
 return (
@@ -56,21 +62,25 @@ return (
 <Routes>
 
 
-{/* ================= USER ROUTES ================= */}
+{/* =================================
+        USER ROUTES
+================================= */}
 
 
 <Route element={<MainLayout />}>
 
 
-<Route 
-path="/" 
-element={<Home />} 
+
+<Route
+path="/"
+element={<Home />}
 />
 
 
-<Route 
-path="/menu" 
-element={<Menu />} 
+
+<Route
+path="/menu"
+element={<Menu />}
 />
 
 
@@ -82,20 +92,6 @@ element={
 <PizzaBuilder />
 </ProtectedRoute>
 }
-/>
-
-
-
-<Route
-path="/about"
-element={<About />}
-/>
-
-
-
-<Route
-path="/contact"
-element={<Contact />}
 />
 
 
@@ -147,6 +143,7 @@ element={
 
 
 
+
 <Route
 path="/edit-profile"
 element={
@@ -154,6 +151,22 @@ element={
 <EditProfile />
 </ProtectedRoute>
 }
+/>
+
+
+
+
+<Route
+path="/about"
+element={<About />}
+/>
+
+
+
+
+<Route
+path="/contact"
+element={<Contact />}
 />
 
 
@@ -171,7 +184,6 @@ element={
 
 
 
-
 <Route
 path="/checkout"
 element={
@@ -185,12 +197,12 @@ element={
 
 
 <Route
- path="/my-orders"
- element={
-   <ProtectedRoute>
-     <UserOrders />
-   </ProtectedRoute>
- }
+path="/my-orders"
+element={
+<ProtectedRoute>
+<UserOrders />
+</ProtectedRoute>
+}
 />
 
 
@@ -201,18 +213,34 @@ element={
 
 
 
+{/* =================================
+        ADMIN LOGIN
+        PUBLIC ROUTE
+================================= */}
 
 
-{/* ================= ADMIN ROUTES ================= */}
+<Route
+path="/admin/login"
+element={<AdminLogin />}
+/>
+
+
+
+
+
+{/* =================================
+        ADMIN PANEL
+        PROTECTED ROUTE
+================================= */}
 
 
 
 <Route
 path="/admin"
 element={
-<ProtectedRoute>
+<AdminProtected>
 <AdminLayout />
-</ProtectedRoute>
+</AdminProtected>
 }
 >
 
@@ -232,10 +260,12 @@ element={<Inventory />}
 
 
 
+
 <Route
 path="add-pizza"
 element={<AddPizza />}
 />
+
 
 
 
@@ -250,6 +280,7 @@ element={<ManagePizzas />}
 path="edit-pizza/:id"
 element={<EditPizza />}
 />
+
 
 
 
@@ -268,7 +299,10 @@ element={<AdminOrders />}
 
 
 
-{/* ================= 404 ================= */}
+{/* =================================
+        404
+================================= */}
+
 
 
 <Route
